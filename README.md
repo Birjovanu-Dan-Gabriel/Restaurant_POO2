@@ -1,6 +1,8 @@
 # Proiect POO2
 
-**Birjovanu Dan-Gabriel** **Grupa 362** **Tema Aleasa:** Gestionare Pizzerie
+**Birjovanu Dan-Gabriel** 
+**Grupa 362**
+**Tema Aleasa:** Gestionare Pizzerie
 
 ---
 
@@ -15,13 +17,15 @@
         * Acces la tabelul Produse ( fiecare produs este alcatuit din ingredientele existente)
         * Acces la Stoc Ingrediente - poate adauga la cantitate
     
-    2. **Chelner** * Selecteaza o masa (se poate selecta si nr de mese disponibile)
+    2. **Chelner**
+        * Selecteaza o masa (se poate selecta si nr de mese disponibile)
         * La o anumita masa poate aduga/sterge produse la comanda (sau anula direct comanda)
         * Chelnerul nu poate finaliza comanda (adica nu este platita) pana cand Bucatarul nu finalizeaza el comanda;
         * De asemenea, cand Bucatarul finalizeaza comanda, chelnerul nu mai poate sterge produse din ea / nu poate anula comanda;    
         * Cand un chelner adauga un produs pe comanda ingredientele necesare acestui produs se scad din stocul magazinului (daca comanda este anulata si stergerea scaderea stockului este anulata)
         
-    3. **Bucatar** * Un dashboard cu comenzile active, poate apasa pe "finalizare comanda"
+    4. **Bucatar**
+        * Un dashboard cu comenzile active, poate apasa pe "finalizare comanda"
 
 ---
 
