@@ -4,7 +4,7 @@ public class Ingredient {
     private int id;
     private String nume;
     private double cantitate; // sau stoc_disponibil
-    private String um; // Unitatea de măsură (nou adăugată)
+    private String um;
 
     public Ingredient(int id, String nume, double cantitate, String um) {
         this.id = id;

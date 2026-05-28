@@ -5,7 +5,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-//TODO ---
+
 public class ClientRepository extends Repository<Client> {
     private static ClientRepository instance;
     private ClientRepository() {}
@@ -17,11 +17,23 @@ public class ClientRepository extends Repository<Client> {
     @Override
     public void insert(Client c) {
         String sql = "INSERT INTO clienti (nume, telefon) VALUES (?, ?)";
-        try (PreparedStatement pstmt = getContext().prepareStatement(sql)) {
+
+
+        try (PreparedStatement pstmt = getContext().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             pstmt.setString(1, c.getNume());
             pstmt.setString(2, c.getTelefon());
             pstmt.executeUpdate();
-        } catch (SQLException e) { e.printStackTrace(); }
+
+
+            try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    c.setId(generatedKeys.getInt(1));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Eroare la salvarea clientului:");
+            e.printStackTrace();
+        }
     }
 
     @Override

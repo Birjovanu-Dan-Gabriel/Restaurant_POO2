@@ -13,6 +13,7 @@ public class AngajatRepository extends Repository<Angajat> {
         return instance;
     }
 
+
     @Override
     public void insert(Angajat a) {
         String sql = "INSERT INTO angajati (nume, salariu, varsta, gen, data_angajare, tip_angajat) VALUES (?, ?, ?, ?, ?, ?)";
@@ -22,7 +23,7 @@ public class AngajatRepository extends Repository<Angajat> {
             pstmt.setInt(3, a.getVarsta());
             pstmt.setString(4, a.getGen());
             pstmt.setString(5, a.getDataAngajare());
-            pstmt.setString(6, (a instanceof Chelner) ? "CHELNER" : "BUCATAR");
+            pstmt.setString(6, (a instanceof Chelner) ? "CHELNER" : (a instanceof Bucatar) ? "BUCATAR" : "MANAGER");
             pstmt.executeUpdate();
         } catch (SQLException e) { e.printStackTrace(); }
     }
@@ -48,11 +49,10 @@ public class AngajatRepository extends Repository<Angajat> {
         return angajati;
     }
 
-    @Override public Angajat getById(int id) { return null; }
+
 
     @Override
     public void update(Angajat a) {
-        // AM MODIFICAT 'tip = ?' în 'tip_angajat = ?'
         String sql = "UPDATE angajati SET nume = ?, salariu = ?, varsta = ?, gen = ?, data_angajare = ?, tip_angajat = ? WHERE id = ?";
         try (PreparedStatement pstmt = getContext().prepareStatement(sql)) {
             pstmt.setString(1, a.getNume());
@@ -60,10 +60,9 @@ public class AngajatRepository extends Repository<Angajat> {
             pstmt.setInt(3, a.getVarsta());
             pstmt.setString(4, a.getGen());
             pstmt.setString(5, a.getDataAngajare());
-            pstmt.setString(6, a.getClass().getSimpleName().toUpperCase()); // Preluăm "CHELNER" sau "BUCATAR"
-            pstmt.setInt(7, a.getId()); // ID-ul este la final pentru clauza WHERE
-
-
+            pstmt.setString(6, (a instanceof Chelner) ? "CHELNER" : (a instanceof Bucatar) ? "BUCATAR" : "MANAGER");
+            pstmt.setInt(7, a.getId());
+            pstmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -74,9 +73,11 @@ public class AngajatRepository extends Repository<Angajat> {
         String sql = "DELETE FROM angajati WHERE id = ?";
         try (PreparedStatement pstmt = getContext().prepareStatement(sql)) {
             pstmt.setInt(1, id);
-
+            pstmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
+
+    @Override public Angajat getById(int id) { return null; }
 }

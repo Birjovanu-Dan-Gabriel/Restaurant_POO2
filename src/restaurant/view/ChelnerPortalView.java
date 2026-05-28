@@ -12,6 +12,7 @@ import javafx.stage.Stage;
 import restaurant.model.Ingredient;
 import restaurant.model.Produs;
 import restaurant.service.RestaurantService;
+import restaurant.exception.*;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -39,7 +40,7 @@ public class ChelnerPortalView {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Button btnLogOut = new Button("🚪 Log Out");
+        Button btnLogOut = new Button("Log Out");
         btnLogOut.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold;");
         btnLogOut.setOnAction(e -> stage.setScene(scenaClient));
 
@@ -68,7 +69,7 @@ public class ChelnerPortalView {
         scrollMese.setStyle("-fx-background-color: transparent; -fx-control-inner-background: #f4f6f7;");
         scrollMese.setPrefHeight(450);
 
-        Button btnSeteazaMese = new Button("⚙️ Setează Număr Mese");
+        Button btnSeteazaMese = new Button("Setează Număr Mese");
         btnSeteazaMese.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold;");
         btnSeteazaMese.setOnAction(e -> seteazaNumarMese());
 
@@ -116,12 +117,9 @@ public class ChelnerPortalView {
                 Produs p = tabelComanda.getSelectionModel().getSelectedItem();
                 if (p != null) {
                     returneazaIngrediente(p);
-                    ObservableList<Produs> comandaCurenta = RestaurantService.getInstance().getComandaMasa(masaSelectataIndex);
-                    comandaCurenta.remove(p);
+                    RestaurantService.getInstance().stergeProdusComanda(masaSelectataIndex,p);
 
-
-                    RestaurantService.getInstance().sincronizeazaComandaCuBucataria(masaSelectataIndex, comandaCurenta);
-
+                    RestaurantService.getInstance().notificaBucataria(masaSelectataIndex);
                     actualizeazaAspectMasa(masaSelectataIndex);
                     calculeazaTotal();
                     actualizeazaButonIncasare(masaSelectataIndex);
@@ -131,39 +129,38 @@ public class ChelnerPortalView {
             }
         });
 
-
         Button btnAnuleaza = new Button("Anulează Comanda");
         btnAnuleaza.setStyle(btnStyle);
         btnAnuleaza.setOnAction(e -> {
             if(masaSelectataIndex != -1) {
-                ObservableList<Produs> produsePeMasa = RestaurantService.getInstance().getComandaMasa(masaSelectataIndex);
+                ObservableList<Produs> produsePeMasa = RestaurantService.getInstance().getMasa(masaSelectataIndex).getComandaActiva().getProduse();
                 if (!produsePeMasa.isEmpty()) {
                     for (Produs p : produsePeMasa) {
                         returneazaIngrediente(p);
                     }
-                    produsePeMasa.clear();
 
-
-                    RestaurantService.getInstance().sincronizeazaComandaCuBucataria(masaSelectataIndex, produsePeMasa);
+                    RestaurantService.getInstance().stergeComanda(masaSelectataIndex);
+                    RestaurantService.getInstance().elibereazaMasa(masaSelectataIndex);
 
                     actualizeazaAspectMasa(masaSelectataIndex);
                     calculeazaTotal();
                     actualizeazaButonIncasare(masaSelectataIndex);
+                    tabelComanda.setItems(RestaurantService.getInstance().getMasa(masaSelectataIndex).getComandaActiva().getProduse());
                 }
             }
         });
 
         btnFinalizeaza = new Button("Masă Goală");
         btnFinalizeaza.setDisable(true);
-
         btnFinalizeaza.setOnAction(e -> {
             if(masaSelectataIndex != -1) {
-                RestaurantService.getInstance().getComandaMasa(masaSelectataIndex).clear();
+
                 RestaurantService.getInstance().elibereazaMasa(masaSelectataIndex);
 
                 actualizeazaAspectMasa(masaSelectataIndex);
                 calculeazaTotal();
                 actualizeazaButonIncasare(masaSelectataIndex);
+                tabelComanda.setItems(RestaurantService.getInstance().getMasa(masaSelectataIndex).getComandaActiva().getProduse());
 
                 Alert info = new Alert(Alert.AlertType.INFORMATION);
                 info.setContentText("Masa a fost încasată și eliberată!");
@@ -285,19 +282,20 @@ public class ChelnerPortalView {
         btnAdauga.setOnAction(e -> {
             Produs selectat = listaProduse.getSelectionModel().getSelectedItem();
             if (selectat != null) {
-                boolean gatitCuSucces = scadeIngrediente(selectat);
+                try {
+                    // Încercăm să adăugăm produsul. Aici se scade și stocul automat!
+                    RestaurantService.getInstance().adaugaProdusComanda(masaSelectataIndex, selectat);
 
-                if (gatitCuSucces) {
-                    ObservableList<Produs> comandaCurenta = RestaurantService.getInstance().getComandaMasa(masaSelectataIndex);
-                    comandaCurenta.add(selectat);
-
-
-                    RestaurantService.getInstance().sincronizeazaComandaCuBucataria(masaSelectataIndex, comandaCurenta);
-
+                    // Dacă trece de linia de sus (nu a dat eroare), actualizăm interfața:
+                    RestaurantService.getInstance().notificaBucataria(masaSelectataIndex);
                     actualizeazaAspectMasa(masaSelectataIndex);
                     calculeazaTotal();
                     actualizeazaButonIncasare(masaSelectataIndex);
                     menuStage.close();
+
+                } catch (StocInsuficientException ex) {
+                    // Aici PRINDEM excepția ta și o afișăm chelnerului!
+                    arataAlertaEroare(ex.getMessage());
                 }
             }
         });
@@ -314,9 +312,7 @@ public class ChelnerPortalView {
     private void calculeazaTotal() {
         double total = 0.0;
         if (masaSelectataIndex != -1) {
-            for (Produs p : RestaurantService.getInstance().getComandaMasa(masaSelectataIndex)) {
-                total += p.getPret();
-            }
+            total = RestaurantService.getInstance().getMasa(masaSelectataIndex).getComandaActiva().calculeazaTotal();
         }
         labelTotal.setText(String.format("Total: %.2f lei", total));
     }
@@ -350,7 +346,8 @@ public class ChelnerPortalView {
         masaSelectataLabel.setText("Comandă curentă: Masa " + nrMasa);
         actualizeazaAspectMasa(nrMasa);
 
-        tabelComanda.setItems(RestaurantService.getInstance().getComandaMasa(nrMasa));
+
+        tabelComanda.setItems(RestaurantService.getInstance().getMasa(nrMasa).getComandaActiva().getProduse());
 
         calculeazaTotal();
         actualizeazaButonIncasare(nrMasa);
@@ -360,26 +357,41 @@ public class ChelnerPortalView {
         Button btn = butoaneMese.get(nrMasa);
         if (btn == null) return;
 
-        ObservableList<Produs> produsePeMasa = RestaurantService.getInstance().getComandaMasa(nrMasa);
+        ObservableList<Produs> produsePeMasa = RestaurantService.getInstance().getMasa(nrMasa).getComandaActiva().getProduse();
 
-        String stilBaza = "-fx-font-size: 24px; -fx-font-weight: bold; -fx-background-radius: 5px; -fx-cursor: hand; ";
+        boolean esteOcupata = (produsePeMasa != null && !produsePeMasa.isEmpty());
+        boolean areRezervareInCurand = RestaurantService.getInstance().areRezervareInCurand(nrMasa);
         boolean esteSelectata = (nrMasa == masaSelectataIndex);
-        String stilMargine;
+
+        String stilBaza = "-fx-font-weight: bold; -fx-background-radius: 5px; -fx-cursor: hand; ";
+        String stilMargine = "";
+
 
         if (esteSelectata) {
             stilMargine = "-fx-border-color: #2980b9; -fx-border-width: 4px; -fx-border-radius: 5px;";
-        } else if (produsePeMasa == null || produsePeMasa.isEmpty()) {
-            stilMargine = "-fx-border-color: #27ae60; -fx-border-width: 2px; -fx-border-radius: 5px;";
-        } else {
-            stilMargine = "-fx-border-color: #c0392b; -fx-border-width: 2px; -fx-border-radius: 5px;";
         }
 
-        if (produsePeMasa == null || produsePeMasa.isEmpty()) {
-            btn.setStyle(stilBaza + "-fx-background-color: #2ecc71; -fx-text-fill: white; " + stilMargine);
+
+        if (esteOcupata) {
+            // rosu - ocupat/comanda activa
+            if (!esteSelectata) stilMargine = "-fx-border-color: #c0392b; -fx-border-width: 2px; -fx-border-radius: 5px;";
+            btn.setStyle(stilBaza + "-fx-font-size: 24px; -fx-background-color: #e74c3c; -fx-text-fill: white; " + stilMargine);
+            btn.setText("" + nrMasa);
+
+        } else if (areRezervareInCurand) {
+            // portocaliu - rezervare in mai putin de 30 min
+            if (!esteSelectata) stilMargine = "-fx-border-color: #d35400; -fx-border-width: 2px; -fx-border-radius: 5px;";
+            btn.setStyle(stilBaza + "-fx-font-size: 14px; -fx-background-color: #e67e22; -fx-text-fill: white; " + stilMargine);
+            btn.setText(nrMasa + "\n(Rezervat)");
+
         } else {
-            btn.setStyle(stilBaza + "-fx-background-color: #e74c3c; -fx-text-fill: white; " + stilMargine);
+            // verde - liber
+            if (!esteSelectata) stilMargine = "-fx-border-color: #27ae60; -fx-border-width: 2px; -fx-border-radius: 5px;";
+            btn.setStyle(stilBaza + "-fx-font-size: 24px; -fx-background-color: #2ecc71; -fx-text-fill: white; " + stilMargine);
+            btn.setText("" + nrMasa);
         }
     }
+
 
     private void seteazaNumarMese() {
         TextInputDialog dialog = new TextInputDialog("12");
@@ -408,8 +420,8 @@ public class ChelnerPortalView {
     private void actualizeazaButonIncasare(int nrMasa) {
         if (btnFinalizeaza == null) return;
 
-        ObservableList<Produs> produse = RestaurantService.getInstance().getComandaMasa(nrMasa);
-
+        ObservableList<Produs> produse = RestaurantService.getInstance().getMasa(nrMasa).getComandaActiva().getProduse();
+        
         if (produse == null || produse.isEmpty()) {
             btnFinalizeaza.setDisable(true);
             btnFinalizeaza.setStyle("-fx-background-color: #bdc3c7; -fx-text-fill: white; -fx-border-radius: 5px; -fx-padding: 10px; -fx-pref-width: 150px;");

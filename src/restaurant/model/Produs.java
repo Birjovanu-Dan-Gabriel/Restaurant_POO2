@@ -9,7 +9,6 @@ public class Produs implements Comparable<Produs> {
     private double pret;
     private double kcal;
 
-    // Aici se stocheata "reteta" produsului (ingredientele necesare)
     private Map<Ingredient, Double> reteta;
 
     public Produs(int id, String nume, double pret, double kcal) {
@@ -30,22 +29,37 @@ public class Produs implements Comparable<Produs> {
     public double getKcal() { return kcal; }
     public Map<Ingredient, Double> getReteta() { return reteta; }
 
-    
+
+    private boolean esteBautura(String numeProdus) {
+
+        if (numeProdus != null && numeProdus.length() >= 2) {
+            char penultimulCaracter = numeProdus.charAt(numeProdus.length() - 2);
+            return Character.isDigit(penultimulCaracter);
+        }
+        return false;
+    }
+
+
+    // Ordonam bauturi > mancare, nume, id
     @Override
     public int compareTo(Produs altProdus) {
-        // Mai intai comparam preturile
-        int compararePret = Double.compare(this.pret, altProdus.pret);
-        if (compararePret != 0) {
-            return compararePret;
+
+        boolean thisEsteBautura = esteBautura(this.nume);
+        boolean altEsteBautura = esteBautura(altProdus.nume);
+
+
+        if (thisEsteBautura && !altEsteBautura) {
+            return -1;
+        }
+        if (!thisEsteBautura && altEsteBautura) {
+            return 1;
         }
 
-        // Daca sunt egale, le ordonam dupa nume
         int comparareNume = this.nume.compareToIgnoreCase(altProdus.nume);
         if (comparareNume != 0) {
             return comparareNume;
         }
 
-        // Daca au si acelasi nume facem diferenta prin id
         return Integer.compare(this.id, altProdus.id);
     }
 }

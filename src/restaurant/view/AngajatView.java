@@ -20,7 +20,7 @@ import restaurant.repository.AngajatRepository;
 
 import java.util.List;
 
-//TODO -- vezi ce nu are ce cauta aici si treuie mutat in service (pt toate viewurile)
+
 public class AngajatView {
     public Scene creazaScenaAngajati(Stage stage, Scene scenaPricipala) {
         Label titlu = new Label("Gestiune Angajați");
@@ -59,6 +59,7 @@ public class AngajatView {
             Angajat a = cellData.getValue();
             if (a instanceof Chelner) return new SimpleStringProperty("Chelner");
             if (a instanceof Bucatar) return new SimpleStringProperty("Bucătar");
+            if (a instanceof restaurant.model.Manager) return new SimpleStringProperty("Manager");
             return new SimpleStringProperty("Necunoscut");
         });
         colTip.setPrefWidth(150);
@@ -147,7 +148,7 @@ public class AngajatView {
         inputSalariu.setPromptText("Salariu (ex: 3500)");
 
         javafx.scene.control.ComboBox<String> comboTip = new javafx.scene.control.ComboBox<>();
-        comboTip.getItems().addAll("Chelner", "Bucatar");
+        comboTip.getItems().addAll("Chelner", "Bucatar", "Manager");
         comboTip.setPromptText("Selectați Funcția");
 
         javafx.scene.control.TextField inputVarsta = new javafx.scene.control.TextField();
@@ -263,6 +264,7 @@ public class AngajatView {
 
         if (angajat instanceof Chelner) comboTip.setValue("Chelner");
         else if (angajat instanceof Bucatar) comboTip.setValue("Bucatar");
+        else if (angajat instanceof restaurant.model.Manager) comboTip.setValue("Manager");
 
         DatePicker inputData = new DatePicker();
         try {

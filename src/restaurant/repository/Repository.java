@@ -10,7 +10,7 @@ public abstract class Repository<T> {
         return DatabaseConnection.getInstance().getConnection();
     }
 
-    // Metode abstracte implementate pt fiecare obiect
+    // metodele abstracte implementate pt fiecare obiect
     public abstract void insert(T object);
     public abstract T getById(int id);
     public abstract List<T> getAll();

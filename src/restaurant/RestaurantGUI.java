@@ -11,6 +11,7 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import restaurant.view.*;
+import restaurant.service.RestaurantService; // Adăugat pentru a comunica cu DB
 
 public class RestaurantGUI extends Application {
 
@@ -99,6 +100,11 @@ public class RestaurantGUI extends Application {
         btnRezervare.setOnMouseEntered(e -> btnRezervare.setStyle(buttonHoverStyle));
         btnRezervare.setOnMouseExited(e -> btnRezervare.setStyle(buttonStyle));
 
+        btnRezervare.setOnAction(e -> {
+            RezervareView rezervareView = new RezervareView();
+            primaryStage.setScene(rezervareView.creazaScena(primaryStage, scenaClient));
+        });
+
         VBox panouActiuniClient = new VBox(15, btnVeziMeniu, btnRezervare);
         panouActiuniClient.setAlignment(Pos.CENTER_RIGHT);
 
@@ -133,7 +139,8 @@ public class RestaurantGUI extends Application {
         loginStage.setTitle("Autentificare Personal");
 
         TextField inputUser = new TextField();
-        inputUser.setPromptText("Nume Utilizator (ex: Manager)");
+        // Placeholder actualizat pentru claritate
+        inputUser.setPromptText("Nume Prenume (ex: IonPopescu)");
 
         PasswordField inputParola = new PasswordField();
         inputParola.setPromptText("Parolă");
@@ -145,31 +152,54 @@ public class RestaurantGUI extends Application {
             String user = inputUser.getText().trim();
             String parola = inputParola.getText();
 
+            if (user.isEmpty() || parola.isEmpty()) {
+                Alert alerta = new Alert(Alert.AlertType.WARNING);
+                alerta.setTitle("Atenție");
+                alerta.setHeaderText(null);
+                alerta.setContentText("Vă rugăm să completați ambele câmpuri!");
+                alerta.showAndWait();
+                return;
+            }
 
+            // TODO
             if (parola.equals("admin")) {
 
-                if (user.equalsIgnoreCase("Manager")) {
-                    ManagerPortalView view = new ManagerPortalView();
-                    primaryStage.setScene(view.creazaScena(primaryStage, scenaClient));
-                    loginStage.close();
-                } else if (user.equalsIgnoreCase("Bucatar")) {
-                    BucatarPortalView view = new BucatarPortalView();
-                    primaryStage.setScene(view.creazaScena(primaryStage, scenaClient));
-                    loginStage.close();
-                } else if (user.equalsIgnoreCase("Chelner")) {
-                    ChelnerPortalView view = new ChelnerPortalView();
-                    primaryStage.setScene(view.creazaScena(primaryStage, scenaClient));
-                    loginStage.close();
-                } else {
 
+                String rol = RestaurantService.getInstance().getRolAngajatDupaUsername(user);
+
+                if (rol != null) {
+                    // Verificăm valoarea extrasă din DB
+                    switch (rol.toUpperCase()) {
+                        case "MANAGER":
+                            ManagerPortalView managerView = new ManagerPortalView();
+                            primaryStage.setScene(managerView.creazaScena(primaryStage, scenaClient));
+                            loginStage.close();
+                            break;
+                        case "BUCATAR":
+                            BucatarPortalView bucatarView = new BucatarPortalView();
+                            primaryStage.setScene(bucatarView.creazaScena(primaryStage, scenaClient));
+                            loginStage.close();
+                            break;
+                        case "CHELNER":
+                            ChelnerPortalView chelnerView = new ChelnerPortalView();
+                            primaryStage.setScene(chelnerView.creazaScena(primaryStage, scenaClient));
+                            loginStage.close();
+                            break;
+                        default:
+                            Alert alerta = new Alert(Alert.AlertType.ERROR);
+                            alerta.setTitle("Eroare");
+                            alerta.setHeaderText(null);
+                            alerta.setContentText("Eroare DB: Rol invalid ('" + rol + "')!");
+                            alerta.showAndWait();
+                    }
+                } else {
                     Alert alerta = new Alert(Alert.AlertType.ERROR);
                     alerta.setTitle("Eroare");
                     alerta.setHeaderText(null);
-                    alerta.setContentText("Utilizator necunoscut! Folosește: Manager, Bucatar sau Chelner.");
+                    alerta.setContentText("Angajatul '" + user + "' nu există în sistem!");
                     alerta.showAndWait();
                 }
             } else {
-
                 Alert alerta = new Alert(Alert.AlertType.ERROR);
                 alerta.setTitle("Eroare");
                 alerta.setHeaderText(null);

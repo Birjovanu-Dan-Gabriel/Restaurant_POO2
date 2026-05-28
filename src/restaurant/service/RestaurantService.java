@@ -2,14 +2,17 @@ package restaurant.service;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import restaurant.exception.StocInsuficientException;
 import restaurant.repository.*;
 import restaurant.model.*;
 import java.util.*;
-
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import restaurant.config.DatabaseConnection;
+import restaurant.exception.*;
 
 public class RestaurantService {
-
 
     private static RestaurantService instance;
     private RestaurantService() {}
@@ -19,22 +22,124 @@ public class RestaurantService {
     }
 
     private List<Angajat> angajati = new ArrayList<>();
-    private Set<Produs> meniuSortat = new TreeSet<>(); // Colectie sortată
+    private Set<Produs> meniuSortat = new TreeSet<>();
+
+    //todo astea doua
     private Map<String, Double> stocIngrediente = new HashMap<>();
     private List<Rezervare> rezervari = new ArrayList<>();
-    private Map<Integer, List<Produs>> comenziActive = new LinkedHashMap<>();
-    private Map<Integer, List<Produs>> comenziBucatarie = new LinkedHashMap<>();
-    private Map<Integer, Boolean> statusMancare = new HashMap<>(); // false = se gătește, true = e gata
-    private Map<Integer, ObservableList<Produs>> memorieMeseChelner = new HashMap<>();
+
+
+    private Map<Integer, Masa> mese = new HashMap<>();
 
 
 
-    // --- ACTIUNI ANGAJATI ---
+    // === Masa - Chelner - Bucatar ===
+
+    public Masa getMasa(int nrMasa) {
+        if (!mese.containsKey(nrMasa)) {
+            mese.put(nrMasa, new Masa(nrMasa, 4)); // Capacitate default
+        }
+        return mese.get(nrMasa);
+    }
+
+    public Map<Integer, Comanda> getComenziActiveBucatarie() {
+        Map<Integer, Comanda> active = new LinkedHashMap<>();
+        for (Masa m : mese.values()) {
+            Comanda c = m.getComandaActiva();
+            if (!c.getProduse().isEmpty() && c.getStatus().equals("IN_PREPARARE")) {
+                active.put(m.getId(), c);
+            }
+        }
+        return active;
+    }
+
+
+    public void notificaBucataria(int nrMasa) {
+        Comanda c = getMasa(nrMasa).getComandaActiva();
+        if (!c.getProduse().isEmpty()) {
+            c.setStatus("IN_PREPARARE");
+        }
+    }
+
+    public void bucatarAprobaComanda(int nrMasa) {
+        getMasa(nrMasa).getComandaActiva().setStatus("GATA");
+        AuditService.getInstance().logAction("bucatar_aproba_comanda");
+    }
+
+    public boolean esteMancareaGata(int nrMasa) {
+        Comanda c = getMasa(nrMasa).getComandaActiva();
+        return c.getStatus().equals("GATA") && !c.getProduse().isEmpty();
+    }
+
+    public void elibereazaMasa(int nrMasa) {
+        getMasa(nrMasa).elibereazaMasa();
+        AuditService.getInstance().logAction("masa_eliberata");
+    }
+
+    // --- END ---
+
+
+
+    // === COMENZI ===
+
+    public void adaugaProdusComanda(int nrMasa, Produs p) throws StocInsuficientException {
+
+        Map<Ingredient, Double> reteta = p.getReteta();
+        if (reteta != null && !reteta.isEmpty()) {
+
+            for (Map.Entry<Ingredient, Double> entry : reteta.entrySet()) {
+                int idIngredientNecesat = entry.getKey().getId();
+                double cantitateNecesara = entry.getValue();
+
+                Ingredient ingredientDinStoc = getToateIngredientele().stream()
+                        .filter(i -> i.getId() == idIngredientNecesat)
+                        .findFirst()
+                        .orElse(null);
+
+                if (ingredientDinStoc == null || ingredientDinStoc.getCantitate() < cantitateNecesara) {
+                    throw new StocInsuficientException("Stoc insuficient pentru produsul '" + p.getNume() + "'. Lipsește: " + entry.getKey().getNume());
+                }
+            }
+
+            for (Map.Entry<Ingredient, Double> entry : reteta.entrySet()) {
+                int idIngredientNecesat = entry.getKey().getId();
+
+                Ingredient ingredientDinStoc = getToateIngredientele().stream()
+                        .filter(i -> i.getId() == idIngredientNecesat)
+                        .findFirst()
+                        .orElse(null);
+
+                if (ingredientDinStoc != null) {
+                    ingredientDinStoc.setCantitate(ingredientDinStoc.getCantitate() - entry.getValue());
+                    actualizeazaIngredient(ingredientDinStoc);
+                }
+                AuditService.getInstance().logAction("produs_adaugat_comanda");
+                AuditService.getInstance().logAction("ingrediente_actualizate");
+            }
+        }
+    }
+
+    public void stergeProdusComanda(int nrMasa, Produs p) {
+        getMasa(nrMasa).getComandaActiva().stergeProdus(p);
+        AuditService.getInstance().logAction("produs_sters_comanda");
+    }
+
+    public void stergeComanda(int nrMasa) {
+        getMasa(nrMasa).getComandaActiva().golesteComanda();
+        AuditService.getInstance().logAction("comanda_stearsa");
+    }
+
+
+    // --- END ---
+
+
+
+    // === ANGAJATI ===
 
     public void adaugaAngajat(Angajat a) {
-        angajati.add(a); // Salvare in memorie
-        AngajatRepository.getInstance().insert(a); // Salvare in DB
-        AuditService.getInstance().logAction("adauga_angajat"); // Scriere in Audit
+        angajati.add(a);
+        AngajatRepository.getInstance().insert(a);
+        AuditService.getInstance().logAction("adauga_angajat");
         System.out.println("Angajat adăugat: " + a.getNume());
     }
 
@@ -51,16 +156,13 @@ public class RestaurantService {
         angajati.remove(a);
         AngajatRepository.getInstance().delete(a.getId());
         AuditService.getInstance().logAction("stergere_angajat");
-        System.out.println("Angajatul " + a.getNume() + " a fost sters");
     }
 
-    // === END ACTIUNI ANGAJATI ===
+    // --- END ---
 
 
 
-
-    // --- ACTIUNI INGREDIENTE ---
-
+    // === INGREDIENTE ===
 
     public List<Ingredient> getToateIngredientele() {
         return IngredientRepository.getInstance().getAll();
@@ -82,21 +184,16 @@ public class RestaurantService {
         AuditService.getInstance().logAction("sterge_ingredient");
     }
 
-    // === END ACTIUNI INGREDIENTE ===
+    // --- END ---
 
 
 
-    // --- ACTIUNI PRODUSE ---
+    // === PRODUSE ===
 
     public List<Produs> getTotMeniul() {
-
         List<Produs> produseDinDB = ProdusRepository.getInstance().getAll();
-
-
         meniuSortat.clear();
         meniuSortat.addAll(produseDinDB);
-
-        //returam pt afisare
         return new ArrayList<>(meniuSortat);
     }
 
@@ -116,70 +213,43 @@ public class RestaurantService {
         IngredientRepository.getInstance().update(i);
     }
 
+    // --- END ---
 
-    // === END ACTIUNI PRODUSE ===
+    public String getRolAngajatDupaUsername(String username) {
+        String query = "SELECT tip_angajat FROM angajati WHERE REPLACE(nume, ' ', '') = ?";
+        try (Connection connection = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement statement = connection.prepareStatement(query)) {
 
+            String usernameCurat = username.replace(" ", "");
+            statement.setString(1, usernameCurat);
+            ResultSet resultSet = statement.executeQuery();
 
-    //TODO -- e placeholder ce e aici
-
-    // --- Actiuni comanda ---
-
-//    public void trimiteComandaLaBucatarie(int nrMasa, List<Produs> produse) {
-//
-//        comenziActive.put(nrMasa, new java.util.ArrayList<>(produse));
-//        System.out.println("Comanda pentru masa " + nrMasa + " a fost trimisă la bucătărie.");
-//    }
-
-//    public Map<Integer, List<Produs>> getComenziActive() {
-//        return comenziActive;
-//    }
-//
-//    public void finalizeazaComandaBucatar(int nrMasa) {
-//        comenziActive.remove(nrMasa);
-//    }
-
-    public void sincronizeazaComandaCuBucataria(int nrMasa, List<Produs> produse) {
-        if (produse.isEmpty()) {
-            comenziBucatarie.remove(nrMasa);
-            statusMancare.remove(nrMasa);
-        } else {
-
-            comenziBucatarie.put(nrMasa, new java.util.ArrayList<>(produse));
-            statusMancare.put(nrMasa, false);
+            if (resultSet.next()) {
+                return resultSet.getString("tip_angajat");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
+        return null;
     }
 
-    public Map<Integer, List<Produs>> getComenziBucatarie() {
-        return comenziBucatarie;
-    }
+    public boolean areRezervareInCurand(int nrMasa) {
 
+        String query = "SELECT COUNT(*) AS total FROM rezervari WHERE masa_id = ? AND data_ora BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 30 MINUTE)";
 
-    public void bucatarAprobaComanda(int nrMasa) {
-        comenziBucatarie.remove(nrMasa);
-        statusMancare.put(nrMasa, true);
-    }
+        try (Connection connection = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement statement = connection.prepareStatement(query)) {
 
+            statement.setInt(1, nrMasa);
+            ResultSet resultSet = statement.executeQuery();
 
-    public boolean esteMancareaGata(int nrMasa) {
-        return statusMancare.getOrDefault(nrMasa, false);
-    }
-
-
-    public void elibereazaMasa(int nrMasa) {
-        statusMancare.remove(nrMasa);
-    }
-
-
-
-    public ObservableList<Produs> getComandaMasa(int nrMasa) {
-        // Dacă masa nu a fost deschisă niciodată, îi creăm o listă goală
-        if (!memorieMeseChelner.containsKey(nrMasa)) {
-            memorieMeseChelner.put(nrMasa, FXCollections.observableArrayList());
+            if (resultSet.next()) {
+                return resultSet.getInt("total") > 0;
+            }
+        } catch (SQLException e) {
+            System.err.println("Eroare la verificarea rezervărilor pentru masa " + nrMasa + ": " + e.getMessage());
         }
-        return memorieMeseChelner.get(nrMasa);
+
+        return false;
     }
-
-    // === END ACTIUNI COMANDA ===
-
-
 }

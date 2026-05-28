@@ -1,25 +1,45 @@
 package restaurant.model;
-import java.util.ArrayList;
-import java.util.List;
 
-//TODO momentan am folosit 'Map<Integer, ObservableList<Produs>>' ca placeholder pt asta
-//o voi implementa odata cu Rezervarile
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+
 public class Comanda implements Platibil {
     private int id;
-    private List<Produs> produse = new ArrayList<>(); // Colecția 1: List
-    private double totalFinal;
+    private ObservableList<Produs> produse;
+    private String status; // Statusuri posibile: "IN_PREPARARE", "GATA", "FINALIZATA"
 
-    public Comanda(int id) { this.id = id; }
+    public Comanda() {
+        this.produse = FXCollections.observableArrayList();
+        this.status = "IN_PREPARARE"; // Orice comandă nouă începe așa
+    }
 
-    public void adaugaProdus(Produs p) { produse.add(p); }
+    // Getteri și Setteri
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
+
+    public ObservableList<Produs> getProduse() { return produse; }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+
+    // Metode specifice pentru a gestiona lista de produse
+    public void adaugaProdus(Produs p) {
+        this.produse.add(p);
+    }
+    public void stergeProdus(Produs p) {
+        this.produse.remove(p);
+    }
+    public void golesteComanda() {
+        this.produse.clear();
+    }
+
 
     @Override
     public double calculeazaTotal() {
-        return produse.stream().mapToDouble(Produs::getPret).sum();
-    }
-
-    @Override
-    public void aplicaDiscount(int procent) {
-        this.totalFinal = calculeazaTotal() * (1 - (procent / 100.0));
+        double total = 0.0;
+        for (Produs p : produse) {
+            total += p.getPret();
+        }
+        return total;
     }
 }

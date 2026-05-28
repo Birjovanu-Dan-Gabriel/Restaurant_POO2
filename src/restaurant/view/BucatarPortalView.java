@@ -7,13 +7,13 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import restaurant.model.Produs;
+import restaurant.model.Comanda;
 import restaurant.service.RestaurantService;
 
 import java.util.List;
 import java.util.Map;
 
 public class BucatarPortalView {
-
 
     private VBox listaComenziContainer;
 
@@ -64,15 +64,16 @@ public class BucatarPortalView {
         listaComenziContainer.getChildren().clear();
 
 
-        Map<Integer, List<Produs>> comenziReale = RestaurantService.getInstance().getComenziBucatarie();
+        Map<Integer, Comanda> comenziActive = RestaurantService.getInstance().getComenziActiveBucatarie();
 
-        if (comenziReale == null || comenziReale.isEmpty()) {
+        if (comenziActive == null || comenziActive.isEmpty()) {
             Label labelGol = new Label("Nu există nicio comandă activă momentan.");
             labelGol.setStyle("-fx-font-size: 18px; -fx-text-fill: #7f8c8d;");
             listaComenziContainer.getChildren().add(labelGol);
         } else {
-            for (Map.Entry<Integer, List<Produs>> entry : comenziReale.entrySet()) {
-                HBox cardComanda = creazaCardComanda(entry.getKey(), entry.getValue());
+            for (Map.Entry<Integer, Comanda> entry : comenziActive.entrySet()) {
+
+                HBox cardComanda = creazaCardComanda(entry.getKey(), entry.getValue().getProduse());
                 listaComenziContainer.getChildren().add(cardComanda);
             }
         }

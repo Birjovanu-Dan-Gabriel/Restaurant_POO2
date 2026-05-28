@@ -12,7 +12,7 @@ public class DatabaseConnection {
     private static DatabaseConnection instance;
     private final Connection connection;
 
-    //TODO de facut local env si pus datele acolo
+
     private final String url = "jdbc:mysql://localhost:3306/restaurant_db";
     private final String user = "root";
     private final String pass = "ParolaTa123!"; // Parola setată în terminal

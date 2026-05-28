@@ -43,9 +43,9 @@ public class ProdusRepository extends Repository<Produs> {
 
 
                 for (Map.Entry<Ingredient, Double> entry : p.getReteta().entrySet()) {
-                    pstmtReteta.setInt(1, produsIdGenerat);       // ID Produs
-                    pstmtReteta.setInt(2, entry.getKey().getId()); // ID Ingredient
-                    pstmtReteta.setDouble(3, entry.getValue());    // Cantitatea necesară
+                    pstmtReteta.setInt(1, produsIdGenerat);
+                    pstmtReteta.setInt(2, entry.getKey().getId());
+                    pstmtReteta.setDouble(3, entry.getValue());
                     pstmtReteta.executeUpdate();
                 }
             }
@@ -86,7 +86,7 @@ public class ProdusRepository extends Repository<Produs> {
                 ResultSet rsReteta = pstmtReteta.executeQuery();
 
                 while (rsReteta.next()) {
-                    // Reconstruim ingredientul
+
                     int ingId = rsReteta.getInt("id");
                     String ingNume = rsReteta.getString("nume");
                     double stoc = rsReteta.getDouble("stoc_disponibil");
