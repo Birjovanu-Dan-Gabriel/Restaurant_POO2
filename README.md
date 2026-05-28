@@ -8,7 +8,7 @@
 
 ## Functionalitati implementate:
 
-* La lansarea aplicatiei utilizatorul este pe pagina principala a clientului unde poate vizualiza meniul (**urmeaza sa implementez functia de rezervare);
+* La lansarea aplicatiei utilizatorul este pe pagina principala a clientului unde poate vizualiza meniul si plasa o rezervare.
 * In josul paginii utilizatorul are un buton de "Acces personal" unde se pot conecta 3 tipuri de angajati (Manager, Chelner, Bucatar), momentan parola este admin pentru toti;
     
     1. **Manager**
@@ -24,17 +24,11 @@
         * De asemenea, cand Bucatarul finalizeaza comanda, chelnerul nu mai poate sterge produse din ea / nu poate anula comanda;    
         * Cand un chelner adauga un produs pe comanda ingredientele necesare acestui produs se scad din stocul magazinului (daca comanda este anulata si stergerea scaderea stockului este anulata)
         
-    4. **Bucatar**
+    3. **Bucatar**
         * Un dashboard cu comenzile active, poate apasa pe "finalizare comanda"
 
+* Diagrama Bazei de date
+![Screenshot 1](src/resources/images/Screenshot%20from%202026-05-28%2014-48-29.png)
+
+![Screenshot 2](src/resources/images/Screenshot%20from%202026-05-28%2014-48-49.png)
 ---
-
-## Ce urmeaza sa implementez/lipsuri:
-
-* Auditul este implementat (mai sunt si lipsuri la placeholdere), doresc sa specifice si ce angajat a facut actiunea si sa pot prezenta audit-ul in sectiunea managerului;
-* In loc de sistemul de login curent voi face unul care sa se folosesaca de angajatii din baza de date (pt a sti ce angajat face si pt a ma folosi de toate clasele create)
-* Posibilitatea de rezervare a unei mese (aici voi implementa si clasa client)
-* Comentarea mai buna a codului
-* Dupa crearea sistemului de login nou voi reface sistemul curent de comenzi Chelner-Bucatar (momentan nu ma folosesc de clasa Comenzi, doresc sa am clasificare pe un angajat anume, nu unul generic)
-* Sectiunea si aplicarea automata de discounturi ( managerul poate adauga un discount de tipul ( x Produse - > n% discount)
-* Regandirea Stocului (sa nu fie introdus manual, la o anumita ora sau data sa se aprovizioneze automat magazinul / anumite produse sa vina de la anumiti distribuitori)
